@@ -155,7 +155,10 @@ class ModBot(discord.Client):
         scores = self.eval_text(message)
         await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
 
-<<<<<<< HEAD
+        msg_validity = fact_check(message.content)
+        if msg_validity != "" and msg_validity != "True" and msg_validity != None:
+            await mod_channel.send(f'This message has been fact checked as being potentially false')
+
     async def on_raw_reaction_add(self, payload):
         if payload.user_id == self.user.id:
             return
@@ -341,11 +344,6 @@ class ModBot(discord.Client):
         else:
             await channel.send("Sorry, we cannot process your edited response because the report has already "
                                "been sent to the moderators. Please submit another report with your edited response.")
-=======
-        msg_validity = fact_check(message.content)
-        if msg_validity != "" and msg_validity != "True" and msg_validity != None:
-            await mod_channel.send(f'This message has been fact checked as being potentially false')
->>>>>>> cf05a7f371aa35a1a424675e80a7e67afd9a667a
 
     def eval_text(self, message):
         '''
