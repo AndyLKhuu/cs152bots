@@ -55,11 +55,25 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            await message.author.send("I found this message:")
+            await message.author.send("```" + message.author.name + ": " + message.content + "```")
+            reply = "Please select the reason for reporting this message:"
+            await message.author.send(reply)
+
+            options = ":one: Harassment/Bullying\n"
+            options += ":two: False or Misleading Information\n"
+            options += ":three: Violence/Graphic Imagery\n"
+            options += ":four: Spam\n"
+            options += ":five: Something Else\n"
+            options_msg = await message.author.send(options)
+            await options_msg.add_reaction('1️⃣')
+            await options_msg.add_reaction('2️⃣')
+            await options_msg.add_reaction('3️⃣')
+            await options_msg.add_reaction('4️⃣')
+            await options_msg.add_reaction('5️⃣')
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            return ["ORIGINAL", message.content, message.author.name]
 
         return []
 
