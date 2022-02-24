@@ -61,11 +61,12 @@ class ModBot(discord.Client):
         self.sent = False
         self.message = ""
         self.message_author = ""
+        self.message_object = None
         # ****
         self.curr_message = discord.Message     # most recent message mods are looking at
         self.messages_queue = deque()
         self.points = {} # map from user IDs to points (more points = more reports on their messages)
-        self.message_object = None
+
 
 
     async def on_ready(self):
@@ -419,11 +420,12 @@ class ModBot(discord.Client):
             if str(payload.emoji) == '⭕' or str(payload.emoji) == '🚫':
                 await channel.send("We appreciate you taking the time to help us uphold the community guidelines. "
                                    "Our team will take the appropriate action, which may result in the "
-                                   "content or account removal.")
+                                   "content or account removal. To submit another report, reply with `report`.")
 
                 for guild in self.guilds:
                     for channel in guild.text_channels:
                         if channel.name == f'group-{self.group_num}-mod':
+
                             await channel.send(f'Forwarded message (from user report):\nOriginal author: '
                                                f'{self.message_author}\nOriginal content: "'
                                                f'{self.message}"\nUserID of Reporter: '
@@ -433,6 +435,17 @@ class ModBot(discord.Client):
                                                f'{self.level_three}"\nMore Details from User: "'
                                                f'{self.more_details}"')
                             self.sent = True
+                            # self.reports[payload.user_id].set_complete()
+                            self.reports.pop(payload.user_id)
+                            self.more_details = ""
+                            self.level_one = ""
+                            self.level_two = ""
+                            self.level_three = ""
+                            self.sent = False
+                            self.message = ""
+                            self.message_author = ""
+                            self.message_object = None
+
 
     async def on_raw_message_edit(self, payload):
         if not payload.guild:

@@ -77,6 +77,10 @@ class Report:
 
         return []
 
+    # def set_complete(self):
+    #     self.state = State.REPORT_COMPLETE
+    #     return ["Report Completed. To submit another report, paste a new message link."]
+
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
     
