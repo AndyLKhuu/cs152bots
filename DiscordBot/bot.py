@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import requests
+from unidecode import unidecode
 from report import Report
 
 # Set up logging to the console
@@ -24,7 +25,20 @@ with open(token_path) as f:
     tokens = json.load(f)
     discord_token = tokens['discord']
     perspective_key = tokens['perspective']
+    claim_buster_key = tokens['claim_buster']
 
+def fact_check(input_claim):
+    input_claim = "Joe Biden has visited Delaware 25 times since becoming president."
+
+    # Define the endpoint (url) with the claim formatted as part of it, api-key (api-key is sent as an extra header)
+    api_endpoint = f"https://idir.uta.edu/claimbuster/api/v2/query/fact_matcher/{input_claim}"
+    request_headers = {"x-api-key": claim_buster_key}
+
+    # Send the GET request to the API and store the api response
+    api_response = requests.get(url=api_endpoint, headers=request_headers)
+
+    # Print out the JSON payload the API sent back
+    print(api_response.json()["justification"][0]["truth_rating"])
 
 class ModBot(discord.Client):
     def __init__(self, key):
@@ -83,10 +97,17 @@ class ModBot(discord.Client):
             return
 
         # Check if this message was sent in a server ("guild") or if it's a DM
+        message.content = unidecode(message.content)
         if message.guild:
             await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
+
+    async def on_message_edit(self, before, after):
+        '''
+        This function is called whenever a message is edited
+        '''
+        await self.handle_channel_message(after)
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -134,6 +155,7 @@ class ModBot(discord.Client):
         scores = self.eval_text(message)
         await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
 
+<<<<<<< HEAD
     async def on_raw_reaction_add(self, payload):
         if payload.user_id == self.user.id:
             return
@@ -319,6 +341,11 @@ class ModBot(discord.Client):
         else:
             await channel.send("Sorry, we cannot process your edited response because the report has already "
                                "been sent to the moderators. Please submit another report with your edited response.")
+=======
+        msg_validity = fact_check(message.content)
+        if msg_validity != "" and msg_validity != "True" and msg_validity != None:
+            await mod_channel.send(f'This message has been fact checked as being potentially false')
+>>>>>>> cf05a7f371aa35a1a424675e80a7e67afd9a667a
 
     def eval_text(self, message):
         '''
