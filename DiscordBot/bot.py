@@ -65,6 +65,7 @@ class ModBot(discord.Client):
         self.curr_message = discord.Message     # most recent message mods are looking at
         self.messages_queue = deque()
         self.points = {} # map from user IDs to points (more points = more reports on their messages)
+        self.message_object = None
 
 
     async def on_ready(self):
@@ -143,6 +144,7 @@ class ModBot(discord.Client):
             if not self.message:
                 self.message = responses[1]
                 self.message_author = responses[2]
+                self.message_object = responses[3]
         else:
             for r in responses:
                 await message.channel.send(r)

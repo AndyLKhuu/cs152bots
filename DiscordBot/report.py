@@ -73,7 +73,7 @@ class Report:
             await options_msg.add_reaction('5️⃣')
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["ORIGINAL", message.content, message.author.name]
+            return ["ORIGINAL", message.content, message.author.name, message]
 
         return []
 
