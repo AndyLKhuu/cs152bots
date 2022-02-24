@@ -49,14 +49,14 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                found_message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             await message.author.send("I found this message:")
-            await message.author.send("```" + message.author.name + ": " + message.content + "```")
+            await message.author.send("```" + found_message.author.name + ": " + found_message.content + "```")
             reply = "Please select the reason for reporting this message:"
             await message.author.send(reply)
 
@@ -73,7 +73,7 @@ class Report:
             await options_msg.add_reaction('5️⃣')
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["ORIGINAL", message.content, message.author.name, message]
+            return ["ORIGINAL", found_message.content, found_message.author.name, found_message]
 
         return []
 
@@ -83,8 +83,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
-
-
-    
-

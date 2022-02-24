@@ -425,7 +425,8 @@ class ModBot(discord.Client):
                 for guild in self.guilds:
                     for channel in guild.text_channels:
                         if channel.name == f'group-{self.group_num}-mod':
-
+                            self.curr_message = self.message_object
+                            self.messages_queue.append(self.message_object)
                             await channel.send(f'Forwarded message (from user report):\nOriginal author: '
                                                f'{self.message_author}\nOriginal content: "'
                                                f'{self.message}"\nUserID of Reporter: '
