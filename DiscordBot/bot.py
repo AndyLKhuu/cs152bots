@@ -31,8 +31,6 @@ with open(token_path) as f:
     claim_buster_key = tokens['claim_buster']
 
 def fact_check(input_claim):
-    input_claim = "Joe Biden has visited Delaware 25 times since becoming president."
-
     # Define the endpoint (url) with the claim formatted as part of it, api-key (api-key is sent as an extra header)
     api_endpoint = f"https://idir.uta.edu/claimbuster/api/v2/query/fact_matcher/{input_claim}"
     request_headers = {"x-api-key": claim_buster_key}
@@ -40,8 +38,8 @@ def fact_check(input_claim):
     # Send the GET request to the API and store the api response
     api_response = requests.get(url=api_endpoint, headers=request_headers)
 
-    # Print out the JSON payload the API sent back
-    print(api_response.json()["justification"][0]["truth_rating"])
+    res = api_response.json()["justification"][0]["truth_rating"]
+    return res
 
 class ModBot(discord.Client):
     def __init__(self, key):
@@ -95,19 +93,16 @@ class ModBot(discord.Client):
         '''
 
         # Ignore messages from the bot
-
         if message.author.id == self.user.id:
             if message.content.startswith('Please provide more details'):
                 channel = message.channel
                 msg = await client.wait_for('message', check=None)
                 self.more_details = msg.content
                 await channel.send("We have received the following response: " + self.more_details)
+                return
             # return
 
         # # Ignore messages from the bot 
-        # if message.author.id == self.user.id:
-        #     return
-
         # Check if this message was sent in a server ("guild") or if it's a DM
         message.content = unidecode(message.content)
         if message.guild:
@@ -156,42 +151,28 @@ class ModBot(discord.Client):
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
 
-    async def handle_channel_message(self, message):    # CHANGED THIS FUNCTION
+    async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel xxxx
         mod_channel = self.mod_channels[message.guild.id]
         if message.channel.name == f'group-{self.group_num}':
-            # Forward the message to the mod channel
-            self.curr_message = message
-            self.messages_queue.append(message)
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            msg_validity = fact_check(message.content)
+            if msg_validity != "" and msg_validity != "True" and msg_validity != None:
+                # Forward the message to the mod channel
+                self.curr_message = message
+                self.messages_queue.append(message)
+                await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
 
-            scores = self.eval_text(message)
-            await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
+                scores = self.eval_text(message)
+                await mod_channel.send(f'This message has been fact checked as being potentially false')
+                await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
         elif message.channel.name == f'group-{self.group_num}-mod':
             if 'Forwarded message:' in message.content:
-                # text = message.content[message.content.find('\"'):]
                 question = await mod_channel.send(f'Does the above message fall into any of the following categories? \n 🔴 Harassment/Bullying \n 🟠 False or Misleading Information \n 🟡 Violence/Graphic Imagery \n 🟢 Spam \n 🔵 Other Harmful Content \n')
                 await question.add_reaction('🔴') 
                 await question.add_reaction('🟠') 
                 await question.add_reaction('🟡') 
                 await question.add_reaction('🟢') 
                 await question.add_reaction('🔵') 
-                
-            # return
-
-        else:
-            return
-
-        # # Only handle messages sent in the "group-#" channel
-        # if not message.channel.name == f'group-{self.group_num}':
-        #     return
-
-        # # Forward the message to the mod channel
-        # mod_channel = self.mod_channels[message.guild.id]
-        # await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-
-        # scores = self.eval_text(message)
-        # await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
 
     async def on_raw_reaction_add(self, payload):
         if payload.guild_id:
@@ -273,10 +254,6 @@ class ModBot(discord.Client):
                     await mod_channel.send('The author of the message has been banned because they have exceeded the threshold of allowed points for reports against them.')
 
             # await channel.send("Hello")
-
-            msg_validity = fact_check(message.content)
-            if msg_validity != "" and msg_validity != "True" and msg_validity != None:
-                await mod_channel.send(f'This message has been fact checked as being potentially false')
         else:
             if payload.user_id == self.user.id:
                 return
