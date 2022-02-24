@@ -168,7 +168,7 @@ class ModBot(discord.Client):
             scores = self.eval_text(message)
             await mod_channel.send(self.code_format(json.dumps(scores, indent=2)))
         elif message.channel.name == f'group-{self.group_num}-mod':
-            if 'Forwarded message:' in message.content:
+            if 'Forwarded message' in message.content:
                 # text = message.content[message.content.find('\"'):]
                 question = await mod_channel.send(f'Does the above message fall into any of the following categories? \n 🔴 Harassment/Bullying \n 🟠 False or Misleading Information \n 🟡 Violence/Graphic Imagery \n 🟢 Spam \n 🔵 Other Harmful Content \n')
                 await question.add_reaction('🔴') 
