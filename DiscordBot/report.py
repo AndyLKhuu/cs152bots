@@ -37,6 +37,8 @@ class Report:
             self.state = State.AWAITING_MESSAGE
             return [reply]
         
+        found_message = message
+
         if self.state == State.AWAITING_MESSAGE:
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)

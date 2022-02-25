@@ -112,11 +112,11 @@ class ModBot(discord.Client):
         else:
             await self.handle_dm(message)
 
-    async def on_message_edit(self, before, after):
-        '''
-        This function is called whenever a message is edited
-        '''
-        await self.handle_channel_message(after)
+    # async def on_message_edit(self, before, after):
+    #     '''
+    #     This function is called whenever a message is edited
+    #     '''
+    #     await self.handle_channel_message(after)
 
     async def handle_dm(self, message):
 
@@ -449,7 +449,7 @@ class ModBot(discord.Client):
 
 
     async def on_raw_message_edit(self, payload):
-        if not payload.guild:
+        if not payload.guild_id:
             channel = discord.Client.get_channel(self, payload.channel_id)
             new_msg = await channel.fetch_message(payload.message_id)
             if not self.sent:
@@ -459,6 +459,11 @@ class ModBot(discord.Client):
                 await channel.send("Sorry, we cannot process your edited response because the report has already "
                                    "been sent to the moderators. Please submit another report with your "
                                    "edited response.")
+        else:                           
+            channel = discord.Client.get_channel(self, payload.channel_id)
+            after = await channel.fetch_message(payload.message_id)
+            await self.handle_channel_message(after)
+
 
     def eval_text(self, message):
         '''
