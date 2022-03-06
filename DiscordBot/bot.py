@@ -12,6 +12,9 @@ from unidecode import unidecode
 from report import Report
 from collections import deque
 
+
+
+
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -29,6 +32,8 @@ with open(token_path) as f:
     discord_token = tokens['discord']
     perspective_key = tokens['perspective']
     claim_buster_key = tokens['claim_buster']
+    meaningcloud_key = tokens['meaningcloud']
+
 
 def fact_check(input_claim):
     # Define the endpoint (url) with the claim formatted as part of it, api-key (api-key is sent as an extra header)
@@ -37,9 +42,38 @@ def fact_check(input_claim):
 
     # Send the GET request to the API and store the api response
     api_response = requests.get(url=api_endpoint, headers=request_headers)
-
+    print(api_response.json())
     res = api_response.json()["justification"][0]["truth_rating"]
+
     return res
+
+# def txt_classify(input_url):
+#     pass
+
+def extract_title(input_url):
+    print("Extracting title...")
+    files = {
+        'key': (None, meaningcloud_key),
+        'url': (None, input_url)
+    }
+    response = requests.post('http://api.meaningcloud.com/documentstructure-1.0', files=files)
+    title = response.json()['title']
+    return title
+
+def summarize(input_url):
+    print("Summarizing url content...")
+    files = {
+        'key': (None, meaningcloud_key),
+        'url': (None, input_url),
+        'sentences': (None, '3'),
+    }
+    response = requests.post('http://api.meaningcloud.com/summarization-1.0', files=files)
+    summary = response.json()['summary']
+
+    # remove [...]'s from summary
+    ret = summary.replace("[...]", "")
+    return ret
+
 
 class ModBot(discord.Client):
     def __init__(self, key):
@@ -158,7 +192,31 @@ class ModBot(discord.Client):
         # Only handle messages sent in the "group-#" channel xxxx
         mod_channel = self.mod_channels[message.guild.id]
         if message.channel.name == f'group-{self.group_num}':
+
+            regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|" \
+                    r"(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+            urls = re.findall(regex, message.content)
+            url_list = [x[0] for x in urls]
+            if url_list:
+                for u in url_list:
+                    message.content = message.content.replace(u, "[url]") # replace urls with neutral placeholder
+                    title = extract_title(u)  # extract title
+                    print(title)
+                    sum_str = summarize(u)  # extract summary
+                    print(sum_str)
+                    msg_validity = fact_check(title)  # check validity of article summary
+
+                    if msg_validity != "" and msg_validity != "True" and msg_validity != None:
+                        # Forward the message to the mod channel
+                        self.curr_message = message
+                        self.messages_queue.append(message)
+                        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "Link: {u}\n'
+                                               f'Link title: {title}\n'
+                                               f'Link summary: {sum_str}"')
+                        await mod_channel.send(f'To content of this link has been fact checked as being potentially false')
+
             msg_validity = fact_check(message.content)
+
             if msg_validity != "" and msg_validity != "True" and msg_validity != None:
                 # Forward the message to the mod channel
                 self.curr_message = message
