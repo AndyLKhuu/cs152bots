@@ -12,9 +12,6 @@ from unidecode import unidecode
 from report import Report
 from collections import deque
 
-
-
-
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -42,7 +39,7 @@ def fact_check(input_claim):
 
     # Send the GET request to the API and store the api response
     api_response = requests.get(url=api_endpoint, headers=request_headers)
-    print(api_response.json())
+    # print(api_response.json())
     res = api_response.json()["justification"][0]["truth_rating"]
 
     return res
@@ -99,9 +96,7 @@ class ModBot(discord.Client):
         # ****
         self.curr_message = discord.Message     # most recent message mods are looking at
         self.messages_queue = deque()
-        self.points = {} # map from user IDs to points (more points = more reports on their messages)
-
-
+        self.points = {}  # map from user IDs to points (more points = more reports on their messages)
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -191,7 +186,7 @@ class ModBot(discord.Client):
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel xxxx
         mod_channel = self.mod_channels[message.guild.id]
-        if message.channel.name == f'group-{self.group_num}':
+        if message.channel.name == f'group-{self.group_num}' and len(message.content) > 10:
 
             regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|" \
                     r"(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
@@ -199,11 +194,11 @@ class ModBot(discord.Client):
             url_list = [x[0] for x in urls]
             if url_list:
                 for u in url_list:
-                    message.content = message.content.replace(u, "[url]") # replace urls with neutral placeholder
+                    message.content = message.content.replace(u, "")  # replace urls with neutral placeholder
                     title = extract_title(u)  # extract title
-                    print(title)
+                    # print(title)
                     sum_str = summarize(u)  # extract summary
-                    print(sum_str)
+                    # print(sum_str)
                     msg_validity = fact_check(title)  # check validity of article summary
 
                     if msg_validity != "" and msg_validity != "True" and msg_validity != None:
@@ -213,7 +208,7 @@ class ModBot(discord.Client):
                         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "Link: {u}\n'
                                                f'Link title: {title}\n'
                                                f'Link summary: {sum_str}"')
-                        await mod_channel.send(f'To content of this link has been fact checked as being potentially false')
+                        await mod_channel.send(f'The content of this link has been fact checked as being potentially false')
 
             msg_validity = fact_check(message.content)
 
@@ -487,8 +482,7 @@ class ModBot(discord.Client):
                             self.messages_queue.append(self.message_object)
                             await channel.send(f'Forwarded message (from user report):\nOriginal author: '
                                                f'{self.message_author}\nOriginal content: "'
-                                               f'{self.message}"\nUserID of Reporter: '
-                                               f'{payload.user_id}\nPrimary Abuse Type: "'
+                                               f'{self.message}"\nPrimary Abuse Type: "'
                                                f'{self.level_one}"\nCategory of Abuse Type: "'
                                                f'{self.level_two}"\nDisinformation Type: "'
                                                f'{self.level_three}"\nMore Details from User: "'
