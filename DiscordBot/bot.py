@@ -194,7 +194,7 @@ class ModBot(discord.Client):
             url_list = [x[0] for x in urls]
             if url_list:
                 for u in url_list:
-                    message.content = message.content.replace(u, "")  # replace urls with neutral placeholder
+                    message.content = message.content.replace(u, "")  # TODO replace urls with neutral placeholder
                     title = extract_title(u)  # extract title
                     # print(title)
                     sum_str = summarize(u)  # extract summary
