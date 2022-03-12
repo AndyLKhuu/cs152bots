@@ -1,4 +1,5 @@
 # bot.py
+import copy
 from collections import deque
 from email.message import Message
 import discord
@@ -40,6 +41,8 @@ def fact_check(input_claim):
     # Send the GET request to the API and store the api response
     api_response = requests.get(url=api_endpoint, headers=request_headers)
     # print(api_response.json())
+    if not api_response.json()["justification"]:
+        return None  # ADDED
     res = api_response.json()["justification"][0]["truth_rating"]
 
     return res
@@ -119,8 +122,8 @@ class ModBot(discord.Client):
 
     async def on_message(self, message):
         '''
-        This function is called whenever a message is sent in a channel that the bot can see (including DMs). 
-        Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel. 
+        This function is called whenever a message is sent in a channel that the bot can see (including DMs).
+        Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel.
         '''
 
         # Ignore messages from the bot
@@ -133,7 +136,7 @@ class ModBot(discord.Client):
                 return
             # return
 
-        # # Ignore messages from the bot 
+        # # Ignore messages from the bot
         # Check if this message was sent in a server ("guild") or if it's a DM
         message.content = unidecode(message.content)
         if message.guild:
@@ -192,30 +195,31 @@ class ModBot(discord.Client):
                     r"(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
             urls = re.findall(regex, message.content)
             url_list = [x[0] for x in urls]
+
+            processed_str = copy.deepcopy(message.content)
+            print("URL_LIST:", url_list)
             if url_list:
                 for u in url_list:
-                    message.content = message.content.replace(u, "")  # TODO replace urls with neutral placeholder
                     title = extract_title(u)  # extract title
-                    # print(title)
                     sum_str = summarize(u)  # extract summary
                     # print(sum_str)
                     msg_validity = fact_check(title)  # check validity of article summary
-
+                    processed_str = processed_str.replace(u, "")  # to pass in to api
                     if msg_validity != "" and msg_validity != "True" and msg_validity != None:
+
                         # Forward the message to the mod channel
                         self.curr_message = message
-                        self.messages_queue.append(message)
+                        self.messages_queue.append((message, u))  # TODO (message, u)
                         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "Link: {u}\n'
                                                f'Link title: {title}\n'
                                                f'Link summary: {sum_str}"')
                         await mod_channel.send(f'The content of this link has been fact checked as being potentially false')
-
-            msg_validity = fact_check(message.content)
-
+            print("REACHED", processed_str)
+            msg_validity = fact_check(processed_str)
             if msg_validity != "" and msg_validity != "True" and msg_validity != None:
                 # Forward the message to the mod channel
                 self.curr_message = message
-                self.messages_queue.append(message)
+                self.messages_queue.append((message, processed_str))
                 await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
 
                 scores = self.eval_text(message)
@@ -225,11 +229,11 @@ class ModBot(discord.Client):
             if 'Forwarded message' in message.content:
                 # text = message.content[message.content.find('\"'):]
                 question = await mod_channel.send(f'Does the above message fall into any of the following categories? \n 🔴 Harassment/Bullying \n 🟠 False or Misleading Information \n 🟡 Violence/Graphic Imagery \n 🟢 Spam \n 🔵 Other Harmful Content \n')
-                await question.add_reaction('🔴') 
-                await question.add_reaction('🟠') 
-                await question.add_reaction('🟡') 
-                await question.add_reaction('🟢') 
-                await question.add_reaction('🔵') 
+                await question.add_reaction('🔴')
+                await question.add_reaction('🟠')
+                await question.add_reaction('🟡')
+                await question.add_reaction('🟢')
+                await question.add_reaction('🔵')
 
     async def on_raw_reaction_add(self, payload):
         if payload.guild_id:
@@ -245,8 +249,8 @@ class ModBot(discord.Client):
             mod_channel = self.mod_channels[self.curr_message.guild.id]
             # mod_channel = self.mod_channels[curr_message_obj.guild.id]
             if (channel == mod_channel) and payload.user_id != self.user.id:
-                curr_message_obj = self.messages_queue[0]
-                curr_message = curr_message_obj.content
+                curr_message_obj = self.messages_queue[0][0]
+                curr_message = self.messages_queue[0][1]
                 author_id = curr_message_obj.author.id
                 if str(emoji) == str('🔴'):
                     # await self.curr_message.add_reaction('🔴')
@@ -479,7 +483,8 @@ class ModBot(discord.Client):
                     for channel in guild.text_channels:
                         if channel.name == f'group-{self.group_num}-mod':
                             self.curr_message = self.message_object
-                            self.messages_queue.append(self.message_object)
+                            self.messages_queue.append((self.message_object, self.message))
+                            print("REACHED self.message")
                             await channel.send(f'Forwarded message (from user report):\nOriginal author: '
                                                f'{self.message_author}\nOriginal content: "'
                                                f'{self.message}"\nPrimary Abuse Type: "'
@@ -501,7 +506,7 @@ class ModBot(discord.Client):
 
 
     async def on_raw_message_edit(self, payload):
-        if not payload.guild_id:
+        if not payload.guild_id:  # this is for DMs
             channel = discord.Client.get_channel(self, payload.channel_id)
             new_msg = await channel.fetch_message(payload.message_id)
             if not self.sent:
@@ -511,7 +516,7 @@ class ModBot(discord.Client):
                 await channel.send("Sorry, we cannot process your edited response because the report has already "
                                    "been sent to the moderators. Please submit another report with your "
                                    "edited response.")
-        else:                           
+        else:
             channel = discord.Client.get_channel(self, payload.channel_id)
             after = await channel.fetch_message(payload.message_id)
             await self.handle_channel_message(after)
